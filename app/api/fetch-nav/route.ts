@@ -35,24 +35,18 @@ export async function GET(request: Request) {
         if (!isNaN(nav) && nav > 0) {
           // Upsert into nav_history
           const { error } = await supabase.from('nav_history').upsert(
-            {
-              isin: fund.isin,
-              fund_name: fund.name,
-              nav_date: today,
-              nav: nav,
-            },
-            { onConflict: 'isin,nav_date' }
-          )
+  { isin: fund.isin, nav_date: today, nav: nav },
+  { onConflict: 'isin,nav_date' }
+)
 
-          if (!error) {
-            results.push({ fund: fund.name, isin: fund.isin, nav })
-            // Also update current_nav in portfolio_funds
-            await supabase.from('nav_history').upsert({
-            isin: fund.isin,
-            nav_date: today,
-            nav: nav,
-            }, { onConflict: 'isin,nav_date' })
-          }
+if (!error) {
+  results.push({ fund: fund.name, isin: fund.isin, nav })
+  // Update current_nav in portfolio_funds
+  await supabase
+    .from('portfolio_funds')
+    .update({ current_nav: nav })
+    .eq('isin', fund.isin)
+}
         }
       }
     }
