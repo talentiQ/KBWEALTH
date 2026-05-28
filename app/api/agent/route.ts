@@ -1,142 +1,379 @@
 // app/api/agent/route.ts
+
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
-import { supabase } from '@/lib/supabase'
-import { calcProjection, formatINR, MY_FUNDS, TOTAL_SIP } from '@/lib/funds'
+import { supabaseAdmin as supabase } from '@/lib/supabase-server'
+import {
+  calcProjection,
+  formatINR,
+  MY_FUNDS,
+  TOTAL_SIP,
+} from '@/lib/funds'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
-const SYSTEM = `You are KB's personal institutional-grade wealth management AI.
-Be sharp, specific, and actionable. Never give generic MF advice.
-Always reference actual fund names and ₹ amounts. Use emojis where appropriate.`
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+})
+
+const SYSTEM = `
+You are KB Wealth AI — institutional-grade Indian mutual fund portfolio strategist.
+
+Rules:
+- Be concise, high-signal, actionable.
+- Use exact fund names and ₹ values.
+- Avoid generic investing advice.
+- Focus on portfolio optimization, SIP efficiency, risk, tax, allocation, exits.
+- Prefer bullets over paragraphs.
+- Maximize insight per token.
+- Avoid repeating obvious context.
+`
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { type, customPrompt } = body
+    const { type, customPrompt } = body || {}
 
     let result = ''
 
-    // Path 1: customPrompt from page.tsx (context already included)
+    // ─── Custom Prompt ─────────────────────────────────────────────────────
     if (customPrompt) {
       const response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 800,
+        model: 'claude-sonnet-4-6',
+        max_tokens: 700,
         system: SYSTEM,
-        messages: [{ role: 'user', content: customPrompt }],
+        messages: [
+          {
+            role: 'user',
+            content: customPrompt,
+          },
+        ],
       })
-      result = response.content[0].type === 'text' ? response.content[0].text : ''
 
-    // Path 2: type-based (builds context from Supabase itself)
+      result =
+        response.content[0]?.type === 'text'
+          ? response.content[0].text
+          : ''
+
+    // ─── Built-in Portfolio Intelligence ──────────────────────────────────
     } else if (type) {
       const context = await buildPortfolioContext()
+
       switch (type) {
-        case 'weekly':     result = await runWeeklyBrief(context); break
-        case 'projection': result = await runProjectionUpdate(context); break
-        case 'alert':      result = await runAlertCheck(context); break
-        case 'advice':     result = await runAdvice(context); break
-        default:           result = await runWeeklyBrief(context)
+        case 'weekly':
+          result = await runWeeklyBrief(context)
+          break
+
+        case 'projection':
+          result = await runProjectionUpdate(context)
+          break
+
+        case 'alert':
+          result = await runAlertCheck(context)
+          break
+
+        case 'advice':
+          result = await runAdvice(context)
+          break
+
+        default:
+          result = await runWeeklyBrief(context)
       }
+
     } else {
-      return NextResponse.json({ error: 'Provide type or customPrompt' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Provide type or customPrompt' },
+        { status: 400 }
+      )
     }
 
-    // Save to alerts_log
-    await supabase.from('alerts_log').insert({
-      alert_type: type || 'custom',
-      title: `AI ${type || 'brief'} — ${new Date().toLocaleDateString()}`,
-      message: result.substring(0, 500),
-      severity: 'info',
+    // ─── Save AI Response to alerts_log ───────────────────────────────────
+    try {
+      await supabase
+        .from('alerts_log')
+        .insert({
+          alert_type: type || 'custom_ai',
+          fund_name: null,
+          message: result.substring(0, 500),
+          triggered_at: new Date().toISOString(),
+          is_read: false,
+        })
+    } catch (e) {
+      console.error('[agent] alerts_log insert failed:', e)
+    }
+
+    return NextResponse.json({
+      success: true,
+      result,
     })
 
-    return NextResponse.json({ success: true, result })
   } catch (error: any) {
-    console.error('Agent error:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error('[agent] fatal:', error)
+
+    return NextResponse.json(
+      {
+        error: error?.message || 'Agent failed',
+      },
+      { status: 500 }
+    )
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// BUILD CONTEXT
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function buildPortfolioContext(): Promise<string> {
+
+  // ─── Latest NAVs ────────────────────────────────────────────────────────
   const { data: navs } = await supabase
     .from('nav_history')
     .select('isin, nav, nav_date')
     .in('isin', MY_FUNDS.map(f => f.isin))
     .order('nav_date', { ascending: false })
-    .limit(12)
 
+  // ─── Portfolio Summary ──────────────────────────────────────────────────
+  const { data: portfolio } = await supabase
+    .from('portfolio_summary')
+    .select('*')
+    .single()
+
+  // ─── Recent Alerts ──────────────────────────────────────────────────────
   const { data: alerts } = await supabase
     .from('alerts_log')
-    .select('title, severity, triggered_at')
+    .select('alert_type, fund_name, message, triggered_at')
     .order('triggered_at', { ascending: false })
     .limit(5)
 
+  // ─── Latest NAV Per ISIN ────────────────────────────────────────────────
   const navMap: Record<string, { nav: number; date: string }> = {}
-  for (const n of navs || []) {
-    if (!navMap[n.isin]) navMap[n.isin] = { nav: n.nav, date: n.nav_date }
+
+  for (const row of navs || []) {
+    if (!navMap[row.isin]) {
+      navMap[row.isin] = {
+        nav: Number(row.nav),
+        date: row.nav_date,
+      }
+    }
   }
 
-  const navSummary = MY_FUNDS.map(f =>
-    navMap[f.isin]
-      ? `${f.name}: NAV Rs.${navMap[f.isin].nav} (${navMap[f.isin].date})`
-      : `${f.name}: NAV not yet fetched`
-  ).join('\n')
+  // ─── Compact Fund Summary ───────────────────────────────────────────────
+  const compactFunds = MY_FUNDS.map(f => ({
+    n: f.name,
+    c: f.category,
+    sip: f.sip,
+    nav: navMap[f.isin]?.nav || 0,
+  }))
 
-  const alertSummary = alerts?.map(a => `[${a.severity}] ${a.title}`).join('\n') || 'No recent alerts'
+  // ─── Compact Alerts ─────────────────────────────────────────────────────
+  const compactAlerts =
+    alerts?.map(a =>
+      `${a.alert_type}: ${a.message}`
+    ).join('\n') || 'No alerts'
 
-  return `KB Portfolio - ${new Date().toDateString()}
-Total: Rs.66.87L | Invested: Rs.52.58L | Returns: +Rs.14.29L | XIRR: 14.18%
-Monthly SIP: Rs.${TOTAL_SIP.toLocaleString()}/month
+  return `
+Date: ${new Date().toDateString()}
 
-Active SIP Funds:
-${MY_FUNDS.map(f => `- ${f.name}: Rs.${f.sip.toLocaleString()}/month (${f.category})`).join('\n')}
+Portfolio:
+Value=${formatINR(portfolio?.current_value || 0)}
+Invested=${formatINR(portfolio?.invested_amount || 0)}
+Returns=${formatINR(portfolio?.absolute_return || 0)}
+XIRR=${Number(portfolio?.xirr || 0).toFixed(2)}%
+SIP=${formatINR(TOTAL_SIP)}/month
 
-Latest NAVs:
-${navSummary}
+Funds:
+${JSON.stringify(compactFunds)}
 
-Recent Alerts:
-${alertSummary}
+Alerts:
+${compactAlerts}
 
-Pending: Exit ICICI BHARAT 22 FOF (Rs.84.28K) | Switch SBI Contra Regular to Direct (Rs.12.57L) | Deploy Rs.8.73L via STP
-Projections (Base @13%): 3M Rs.73.4L | 6M Rs.80.1L | 1Y Rs.91.2L | 5Y Rs.1.71Cr
-Goals: Rs.1Cr Apr 2026 | Rs.1.71Cr Apr 2030 | Rs.8-10Cr in 15Y`
+Goals:
+1Cr Apr-2026
+1.7Cr Apr-2030
+8Cr+ Long Term
+`
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WEEKLY BRIEF
+// ─────────────────────────────────────────────────────────────────────────────
 
 async function runWeeklyBrief(context: string): Promise<string> {
+
+  const prompt = `
+${context}
+
+Generate concise WhatsApp-style portfolio update.
+
+Format:
+📊 Portfolio Score /100
+📈 Best performer
+📉 Weakest area
+⚠ Key risk
+💡 Best action this week
+🎯 Goal progress
+💰 SIP summary
+
+Requirements:
+- Exact fund names
+- Actionable only
+- No generic advice
+- Max 180 words
+`
+
   const res = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514', max_tokens: 800, system: SYSTEM,
-    messages: [{ role: 'user', content: `${context}\n\nGenerate WhatsApp-style weekly brief. 10-12 emoji bullets. Include: portfolio score/100, XIRR status, each fund status, 1 specific action, next SIP reminder.` }],
+    model: 'claude-sonnet-4-6',
+    max_tokens: 500,
+    system: SYSTEM,
+    messages: [
+      {
+        role: 'user',
+        content: prompt,
+      },
+    ],
   })
-  return res.content[0].type === 'text' ? res.content[0].text : ''
+
+  return res.content[0]?.type === 'text'
+    ? res.content[0].text
+    : ''
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PROJECTION ENGINE
+// ─────────────────────────────────────────────────────────────────────────────
 
 async function runProjectionUpdate(context: string): Promise<string> {
-  const cv = 6687000, m = TOTAL_SIP
-  const proj = {
-    '3M Bear': formatINR(calcProjection(cv, m, 3, 10)),
-    '3M Base': formatINR(calcProjection(cv, m, 3, 13)),
-    '3M Bull': formatINR(calcProjection(cv, m, 3, 16)),
-    '6M Base': formatINR(calcProjection(cv, m, 6, 13)),
-    '1Y Base': formatINR(calcProjection(cv, m, 12, 13)),
+
+  const { data: portfolio } = await supabase
+    .from('portfolio_summary')
+    .select('current_value')
+    .single()
+
+  const currentValue = Number(portfolio?.current_value || 0)
+
+  const projections = {
+    '3M Bear': formatINR(calcProjection(currentValue, TOTAL_SIP, 3, 10)),
+    '3M Base': formatINR(calcProjection(currentValue, TOTAL_SIP, 3, 13)),
+    '3M Bull': formatINR(calcProjection(currentValue, TOTAL_SIP, 3, 16)),
+
+    '6M Base': formatINR(calcProjection(currentValue, TOTAL_SIP, 6, 13)),
+
+    '1Y Base': formatINR(calcProjection(currentValue, TOTAL_SIP, 12, 13)),
   }
+
+  const prompt = `
+${context}
+
+Projection Scenarios:
+${JSON.stringify(projections)}
+
+Output:
+- most probable outcome
+- outperforming funds
+- underperforming funds
+- one allocation action
+
+Max 120 words.
+`
+
   const res = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514', max_tokens: 600, system: SYSTEM,
-    messages: [{ role: 'user', content: `${context}\n\nProjections: ${JSON.stringify(proj)}\n\nMost realistic scenario now and why? Which fund outperforms/underperforms in 6M? One specific action. Under 150 words.` }],
+    model: 'claude-sonnet-4-6',
+    max_tokens: 450,
+    system: SYSTEM,
+    messages: [
+      {
+        role: 'user',
+        content: prompt,
+      },
+    ],
   })
-  return res.content[0].type === 'text' ? res.content[0].text : ''
+
+  return res.content[0]?.type === 'text'
+    ? res.content[0].text
+    : ''
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ALERT ENGINE
+// ─────────────────────────────────────────────────────────────────────────────
 
 async function runAlertCheck(context: string): Promise<string> {
+
+  const prompt = `
+${context}
+
+Analyze portfolio risks and opportunities.
+
+Output:
+🔴 Critical
+🟡 Watchlist
+🟢 Opportunity
+
+Focus:
+- valuation excess
+- concentration risk
+- SIP inefficiency
+- direct vs regular leakage
+- sector overexposure
+- deployment timing
+- macro risks
+
+Max 120 words.
+`
+
   const res = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514', max_tokens: 600, system: SYSTEM,
-    messages: [{ role: 'user', content: `${context}\n\nCheck alerts for KB's 6 funds. Format: Red Critical | Yellow Warning | Green Opportunity. Cover: ICICI BHARAT exit, SBI Contra expense drag, small/mid cap valuations, HDFC Defence news, Parag Parikh US risks. Max 2 lines each.` }],
+    model: 'claude-sonnet-4-6',
+    max_tokens: 450,
+    system: SYSTEM,
+    messages: [
+      {
+        role: 'user',
+        content: prompt,
+      },
+    ],
   })
-  return res.content[0].type === 'text' ? res.content[0].text : ''
+
+  return res.content[0]?.type === 'text'
+    ? res.content[0].text
+    : ''
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ACTION ENGINE
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function runAdvice(context: string): Promise<string> {
+
+  const prompt = `
+${context}
+
+Give 3 high-conviction actions for next 30 days.
+
+Requirements:
+- exact fund names
+- exact ₹ allocation
+- one tax optimization
+- one rebalance
+- one SIP/STP optimization
+
+No generic advice.
+Max 150 words.
+`
+
   const res = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514', max_tokens: 700, system: SYSTEM,
-    messages: [{ role: 'user', content: `${context}\n\n3 specific actionable moves for THIS MONTH. Exact fund names and amounts. Include: one tax tip, one rebalancing action, one STP deployment decision for Rs.8.73L. Numbered steps.` }],
+    model: 'claude-sonnet-4-6',
+    max_tokens: 550,
+    system: SYSTEM,
+    messages: [
+      {
+        role: 'user',
+        content: prompt,
+      },
+    ],
   })
-  return res.content[0].type === 'text' ? res.content[0].text : ''
+
+  return res.content[0]?.type === 'text'
+    ? res.content[0].text
+    : ''
 }
