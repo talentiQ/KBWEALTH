@@ -1,6 +1,6 @@
 // app/api/fetch-nav/route.ts
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-server'
 import { MY_FUNDS } from '@/lib/funds'
 
 // AMFI publishes all MF NAVs daily — completely free, no auth needed
@@ -33,20 +33,30 @@ export async function GET(request: Request) {
         const nav = parseFloat(parts[4])
 
         if (!isNaN(nav) && nav > 0) {
-          // Upsert into nav_history
-          const { error } = await supabase.from('nav_history').upsert(
-  { isin: fund.isin, nav_date: today, nav: nav },
-  { onConflict: 'isin,nav_date' }
-)
+          // Upsert into nav_history using server-side service role creds
+          const { error: navError } = await supabaseAdmin
+            .from('nav_history')
+            .upsert(
+              { isin: fund.isin, nav_date: today, nav: nav },
+              { onConflict: 'isin,nav_date' }
+            )
 
-if (!error) {
-  results.push({ fund: fund.name, isin: fund.isin, nav })
-  // Update current_nav in portfolio_funds
-  await supabase
-    .from('portfolio_funds')
-    .update({ current_nav: nav })
-    .eq('isin', fund.isin)
-}
+          if (navError) {
+            console.error('NAV upsert failed for', fund.isin, navError)
+            continue
+          }
+
+          results.push({ fund: fund.name, isin: fund.isin, nav })
+
+          // Update current_nav in portfolio_funds
+          const { error: updateError } = await supabaseAdmin
+            .from('portfolio_funds')
+            .update({ current_nav: nav })
+            .eq('isin', fund.isin)
+
+          if (updateError) {
+            console.error('current_nav update failed for', fund.isin, updateError)
+          }
         }
       }
     }
@@ -69,7 +79,7 @@ if (!error) {
 async function checkNavAlerts() {
   for (const fund of MY_FUNDS) {
     // Get last 7 days of NAVs
-    const { data } = await supabase
+    const { data } = await supabaseAdmin
       .from('nav_history')
       .select('nav, nav_date')
       .eq('isin', fund.isin)
@@ -83,13 +93,17 @@ async function checkNavAlerts() {
 
       if (pctChange <= -5) {
         // Insert red flag alert
-        await supabase.from('alerts_log').insert({
+        const { error: alertError } = await supabaseAdmin.from('alerts_log').insert({
           alert_type: 'nav_drop',
           fund_name: fund.name,
           title: `${fund.name} dropped ${pctChange.toFixed(1)}% this week`,
           message: `NAV fell from ₹${weekAgoNAV} to ₹${latestNAV}. This is a SIP opportunity — keep your SIP running. Consider a small lumpsum if market drops further.`,
           severity: pctChange <= -10 ? 'critical' : 'warning',
         })
+
+        if (alertError) {
+          console.error('alert insert failed for', fund.isin, alertError)
+        }
       }
     }
   }

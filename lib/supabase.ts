@@ -220,23 +220,23 @@ export async function seedDatabase() {
 
   const funds = [
     // Active SIP Funds
-    { fund_name: 'Parag Parikh Flexi Cap', isin: 'INF879O01019', amc: 'PPFAS', category: 'core', sub_category: 'Flexi Cap', sip_amount: 12500, sip_date: 1, start_date: '2024-01-01', target_pct: 22.7, is_active: true },
-    { fund_name: 'SBI Contra Fund Direct', isin: 'INF200K01VD8', amc: 'SBI MF', category: 'core', sub_category: 'Contra', sip_amount: 10000, sip_date: 1, start_date: '2024-01-01', target_pct: 18.2, is_active: true },
-    { fund_name: 'HDFC Mid Cap Opportunities', isin: 'INF179K01VR2', amc: 'HDFC MF', category: 'core', sub_category: 'Mid Cap', sip_amount: 10000, sip_date: 1, start_date: '2024-01-01', target_pct: 18.2, is_active: true },
+    { fund_name: 'Parag Parikh Flexi Cap', isin: 'INF879O01027', amc: 'PPFAS', category: 'core', sub_category: 'Flexi Cap', sip_amount: 12500, sip_date: 1, start_date: '2024-01-01', target_pct: 22.7, is_active: true },
+    { fund_name: 'SBI Contra Fund Direct', isin: 'INF200K01RA0', amc: 'SBI MF', category: 'core', sub_category: 'Contra', sip_amount: 10000, sip_date: 1, start_date: '2024-01-01', target_pct: 18.2, is_active: true },
+    { fund_name: 'HDFC Mid Cap Opportunities', isin: 'INF179K01XQ0', amc: 'HDFC MF', category: 'core', sub_category: 'Mid Cap', sip_amount: 10000, sip_date: 1, start_date: '2024-01-01', target_pct: 18.2, is_active: true },
     { fund_name: 'HDFC Nifty Next 50 Index', isin: 'INF179KC1BQ9', amc: 'HDFC MF', category: 'growth', sub_category: 'Index', sip_amount: 10000, sip_date: 1, start_date: '2025-04-01', target_pct: 18.2, is_active: true },
-    { fund_name: 'Nippon India Small Cap', isin: 'INF204K01U36', amc: 'Nippon MF', category: 'growth', sub_category: 'Small Cap', sip_amount: 7500, sip_date: 1, start_date: '2024-01-01', target_pct: 13.6, is_active: true },
+    { fund_name: 'Nippon India Small Cap', isin: 'INF204K01K15', amc: 'Nippon MF', category: 'growth', sub_category: 'Small Cap', sip_amount: 7500, sip_date: 1, start_date: '2024-01-01', target_pct: 13.6, is_active: true },
     { fund_name: 'HDFC Defence Fund', isin: 'INF179KC1DR4', amc: 'HDFC MF', category: 'satellite', sub_category: 'Sectoral', sip_amount: 5000, sip_date: 1, start_date: '2024-01-01', target_pct: 9.1, is_active: true },
     // Existing Holdings (no active SIP)
     { fund_name: 'SBI Contra (Regular)', isin: 'INF200K01LW3', amc: 'SBI MF', category: 'core', sub_category: 'Contra', sip_amount: 0, sip_date: 0, start_date: '2019-01-01', target_pct: 0, is_active: false },
-    { fund_name: 'Mirae Asset Large Cap', isin: 'INF769K01DM9', amc: 'Mirae', category: 'core', sub_category: 'Large Cap', sip_amount: 0, sip_date: 0, start_date: '2021-01-01', target_pct: 0, is_active: false },
-    { fund_name: 'ICICI Infrastructure Direct', isin: 'INF109KC1BY5', amc: 'ICICI MF', category: 'growth', sub_category: 'Infra', sip_amount: 0, sip_date: 0, start_date: '2022-01-01', target_pct: 0, is_active: false },
+    { fund_name: 'Mirae Asset Large Cap', isin: 'INF769K01AX2', amc: 'Mirae', category: 'core', sub_category: 'Large Cap', sip_amount: 0, sip_date: 0, start_date: '2021-01-01', target_pct: 0, is_active: false },
+    { fund_name: 'ICICI Infrastructure Direct', isin: 'INF109KC1FX1', amc: 'ICICI MF', category: 'growth', sub_category: 'Infra', sip_amount: 0, sip_date: 0, start_date: '2022-01-01', target_pct: 0, is_active: false },
     { fund_name: 'ICICI Technology Direct', isin: 'INF109K01Z48', amc: 'ICICI MF', category: 'growth', sub_category: 'Tech', sip_amount: 0, sip_date: 0, start_date: '2022-06-01', target_pct: 0, is_active: false },
-    { fund_name: 'ICICI Manufacturing Direct', isin: 'INF109KC1EL0', amc: 'ICICI MF', category: 'growth', sub_category: 'Mfg', sip_amount: 0, sip_date: 0, start_date: '2022-06-01', target_pct: 0, is_active: false },
-    { fund_name: 'ICICI Bluechip (Regular)', isin: 'INF109K01EQ4', amc: 'ICICI MF', category: 'core', sub_category: 'Large Cap', sip_amount: 0, sip_date: 0, start_date: '2019-06-01', target_pct: 0, is_active: false },
-    { fund_name: 'ICICI Multicap Direct', isin: 'INF109KC1EV9', amc: 'ICICI MF', category: 'core', sub_category: 'Multi Cap', sip_amount: 0, sip_date: 0, start_date: '2023-01-01', target_pct: 0, is_active: false },
-    { fund_name: 'DSP Tiger (Corpus)', isin: 'INF740K01858', amc: 'DSP MF', category: 'growth', sub_category: 'Infra', sip_amount: 0, sip_date: 0, start_date: '2021-01-01', target_pct: 0, is_active: false },
-    { fund_name: 'ICICI BHARAT 22 FOF', isin: 'INF109KC1EF2', amc: 'ICICI MF', category: 'satellite', sub_category: 'FOF', sip_amount: 0, sip_date: 0, start_date: '2023-01-01', target_pct: 0, is_active: false },
-    { fund_name: 'HSBC L&M Cap (Regular)', isin: 'INF336L01BF3', amc: 'HSBC MF', category: 'core', sub_category: 'L&M Cap', sip_amount: 0, sip_date: 0, start_date: '2021-01-01', target_pct: 0, is_active: false },
+    { fund_name: 'ICICI Manufacturing Direct', isin: 'INF109KC1LJ8', amc: 'ICICI MF', category: 'growth', sub_category: 'Mfg', sip_amount: 0, sip_date: 0, start_date: '2022-06-01', target_pct: 0, is_active: false },
+    { fund_name: 'ICICI Bluechip (Regular)', isin: 'INF109K01BL4', amc: 'ICICI MF', category: 'core', sub_category: 'Large Cap', sip_amount: 0, sip_date: 0, start_date: '2019-06-01', target_pct: 0, is_active: false },
+    { fund_name: 'ICICI Multicap Direct', isin: 'INF109K014O9', amc: 'ICICI MF', category: 'core', sub_category: 'Multi Cap', sip_amount: 0, sip_date: 0, start_date: '2023-01-01', target_pct: 0, is_active: false },
+    { fund_name: 'DSP Tiger (Corpus)', isin: 'INF740K01PU7', amc: 'DSP MF', category: 'growth', sub_category: 'Infra', sip_amount: 0, sip_date: 0, start_date: '2021-01-01', target_pct: 0, is_active: false },
+    { fund_name: 'ICICI BHARAT 22 FOF', isin: 'INF109K018M4', amc: 'ICICI MF', category: 'satellite', sub_category: 'FOF', sip_amount: 0, sip_date: 0, start_date: '2023-01-01', target_pct: 0, is_active: false },
+    { fund_name: 'HSBC L&M Cap (Regular)', isin: 'INF336L01NY9', amc: 'HSBC MF', category: 'core', sub_category: 'L&M Cap', sip_amount: 0, sip_date: 0, start_date: '2021-01-01', target_pct: 0, is_active: false },
   ]
 
   const { data: insertedFunds, error: fundsError } = await supabase
@@ -288,22 +288,22 @@ export async function seedDatabase() {
 
   // Seed NAV history with latest known NAVs
   const navSeeds = [
-    { isin: 'INF879O01019', nav: 318.97, nav_date: '2025-04-28' },
-    { isin: 'INF200K01VD8', nav: 87.32,  nav_date: '2025-04-28' },
-    { isin: 'INF179K01VR2', nav: 579.24, nav_date: '2025-04-28' },
+    { isin: 'INF879O01027', nav: 318.97, nav_date: '2025-04-28' },
+    { isin: 'INF200K01RA0', nav: 87.32,  nav_date: '2025-04-28' },
+    { isin: 'INF179K01XQ0', nav: 579.24, nav_date: '2025-04-28' },
     { isin: 'INF179KC1BQ9', nav: 16.84,  nav_date: '2025-04-28' },
-    { isin: 'INF204K01U36', nav: 85.08,  nav_date: '2025-04-28' },
+    { isin: 'INF204K01K15', nav: 85.08,  nav_date: '2025-04-28' },
     { isin: 'INF179KC1DR4', nav: 25.52,  nav_date: '2025-04-28' },
     { isin: 'INF200K01LW3', nav: 215.16, nav_date: '2025-04-28' },
-    { isin: 'INF769K01DM9', nav: 98.28,  nav_date: '2025-04-28' },
-    { isin: 'INF109KC1BY5', nav: 54.14,  nav_date: '2025-04-28' },
+    { isin: 'INF769K01AX2', nav: 98.28,  nav_date: '2025-04-28' },
+    { isin: 'INF109KC1FX1', nav: 54.14,  nav_date: '2025-04-28' },
     { isin: 'INF109K01Z48', nav: 80.09,  nav_date: '2025-04-28' },
-    { isin: 'INF109KC1EL0', nav: 58.09,  nav_date: '2025-04-28' },
-    { isin: 'INF109K01EQ4', nav: 47.63,  nav_date: '2025-04-28' },
-    { isin: 'INF109KC1EV9', nav: 83.85,  nav_date: '2025-04-28' },
-    { isin: 'INF740K01858', nav: 39.02,  nav_date: '2025-04-28' },
-    { isin: 'INF109KC1EF2', nav: 20.00,  nav_date: '2025-04-28' },
-    { isin: 'INF336L01BF3', nav: 31.47,  nav_date: '2025-04-28' },
+    { isin: 'INF109KC1LJ8', nav: 58.09,  nav_date: '2025-04-28' },
+    { isin: 'INF109K01BL4', nav: 47.63,  nav_date: '2025-04-28' },
+    { isin: 'INF109K014O9', nav: 83.85,  nav_date: '2025-04-28' },
+    { isin: 'INF740K01PU7', nav: 39.02,  nav_date: '2025-04-28' },
+    { isin: 'INF109K018M4', nav: 20.00,  nav_date: '2025-04-28' },
+    { isin: 'INF336L01NY9', nav: 31.47,  nav_date: '2025-04-28' },
   ]
 
   const { error: navError } = await supabase

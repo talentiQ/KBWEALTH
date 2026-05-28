@@ -3,21 +3,21 @@
 export const MY_FUNDS = [
   {
     name: 'Parag Parikh Flexi Cap',
-    isin: 'INF879O01019',
+    isin: 'INF879O01027',
     sip: 12500,
     category: 'core',
     color: '#3dd68c',
   },
   {
     name: 'SBI Contra Direct',
-    isin: 'INF200K01VD8',
+    isin: 'INF200K01RA0',
     sip: 10000,
     category: 'core',
     color: '#4ade98',
   },
   {
     name: 'HDFC Mid Cap Opportunities',
-    isin: 'INF179K01VR2',
+    isin: 'INF179K01XQ0',
     sip: 10000,
     category: 'core',
     color: '#22c566',
@@ -31,14 +31,14 @@ export const MY_FUNDS = [
   },
   {
     name: 'Nippon India Small Cap',
-    isin: 'INF204K01U36',
+    isin: 'INF204K01K15',
     sip: 7500,
     category: 'growth',
     color: '#f0c060',
   },
   {
     name: 'HDFC Defence Fund',
-    isin: 'INF179KC1DR4',
+    isin: 'INF179KC1GI5',
     sip: 5000,
     category: 'satellite',
     color: '#9b6dff',
