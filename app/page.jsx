@@ -492,9 +492,12 @@ export default function KBWealthEnterprise() {
     value:    item.value    || 0,
     invested: item.invested || 0,
     // Insurance-specific: maturity value stored in units, insurer in bank, notes free text
-    units:    isInsurance ? (Number(item.units) || null) : null,
-    notes:    isInsurance ? (item.notes || null) : null,
-    bank:     isInsurance ? (item.bank  || null) : null,
+    maturity_value: isInsurance ? (Number(item.maturity_value) || null) : null,
+insurance_type: isInsurance ? (item.insurance_type || null) : null,
+policy_number: isInsurance ? (item.policy_number || null) : null,
+sum_assured: isInsurance ? (Number(item.sum_assured) || null) : null,
+insurer: isInsurance ? (item.insurer || null) : null,
+notes: item.notes || null,
   }
     } else if (module === 'property') {
       payload = { ...payload, cat:item.cat, name:item.name, loc:item.loc||null,
@@ -1067,15 +1070,15 @@ function LiquidityPage({ data, totals, onAdd, onEdit, onDelete, isViewer, setMod
           )}
         </div>
         {/* Sub-line: insurer + maturity value for insurance */}
-        {isInsurance && (item.bank || Number(item.units) > 0) && (
-          <div style={{ fontSize:10, color:'#7C3AED', marginTop:3, lineHeight:1.5 }}>
-            {item.bank && <span>{item.bank}</span>}
-            {item.bank && Number(item.units) > 0 && <span> · </span>}
-            {Number(item.units) > 0 && (
-              <span>Maturity: <strong>{fmtFull(Number(item.units))}</strong></span>
-            )}
-          </div>
-        )}
+       {isInsurance && (item.insurer || Number(item.maturity_value) > 0) && (
+  <div style={{ fontSize:10, color:'#7C3AED', marginTop:3, lineHeight:1.5 }}>
+    {item.insurer && <span>{item.insurer}</span>}
+    {item.insurer && Number(item.maturity_value) > 0 && <span> · </span>}
+    {Number(item.maturity_value) > 0 && (
+      <span>Maturity: <strong>{fmtFull(Number(item.maturity_value))}</strong></span>
+    )}
+  </div>
+)}
         {/* Notes line */}
         {isInsurance && item.notes && (
           <div style={{ fontSize:10, color:'#9CA3AF', marginTop:2 }}>{item.notes}</div>
