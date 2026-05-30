@@ -1,6 +1,6 @@
 {
-  "name": "kbwealth",
-  "version": "0.1.0",
+  "name": "wealthiq",
+  "version": "0.1.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -11,10 +11,12 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",
     "@ducanh2912/next-pwa": "^10.2.9",
+    "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.1",
     "next": "^15.3.1",
     "react": "^19.2.5",
-    "react-dom": "^19.2.5"
+    "react-dom": "^19.2.5",
+    "recharts": "^3.8.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.4",
