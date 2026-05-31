@@ -290,7 +290,7 @@ Max 180 words. Use goal names exactly as in context.`
         maxTokens: 500,
         prompt: `${ctxString}
 
-Indian tax optimization for ${name}. FY ending Mar 2026. Current XIRR: ${xirr}
+Indian tax optimization for ${name}. FY ending Mar 2027. Current XIRR: ${xirr}
 
 Output:
 📋 LTCG harvesting: which fund, estimated ₹ gain crystallizable, ₹ tax saved at 12.5%
