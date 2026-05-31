@@ -446,7 +446,7 @@ export default function KBWealthEnterprise() {
         supabase.from('cash_balances').select('*').eq('user_id',uid).order('created_at',{ascending:true}),
         supabase.from('financial_goals').select('*').eq('user_id',uid).eq('status','active'),
         supabase.from('net_worth_history').select('*').eq('user_id',uid).order('snapshot_date',{ascending:true}).limit(12),
-        supabase.from('alerts_log').select('*').eq('is_read',false).order('triggered_at',{ascending:false}).limit(10),
+        supabase.from('alerts_log').select('*').eq('user_id', uid).order('triggered_at',{ascending:false}).limit(10),
         mfFundsQuery,
         mfTxQuery,
       ])

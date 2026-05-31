@@ -562,11 +562,11 @@ ${activeFunds.map(f => `• ${f.fund_name} | ₹${f.sip_amount.toLocaleString('e
     if (!sipForm.isin)       { showToast('Valid ISIN required', false); return }
     if (!sipForm.sip_amount) { showToast('Enter monthly SIP amount', false); return }
     const payload: Record<string, any> = {
-      fund_name: sipForm.fund_name, isin: sipForm.isin, amc: sipForm.amc,
-      category: sipForm.category, sub_category: sipForm.sub_category,
+      fund_name: sipForm.fund_name, isin: sipForm.isin,
+      category: sipForm.category,
       sip_amount: Number(sipForm.sip_amount), sip_date: Number(sipForm.sip_date),
       start_date: sipForm.start_date || null, current_nav: sipForm.confirmed_nav || null,
-      target_pct: 0, is_active: true,
+      is_active: true,
     }
     if (userId) payload.user_id = userId
     const { error } = await supabase.from('portfolio_funds').insert(payload)
@@ -585,14 +585,11 @@ ${activeFunds.map(f => `• ${f.fund_name} | ₹${f.sip_amount.toLocaleString('e
       const fundPayload: Record<string, any> = {
         fund_name: lumpsumForm.fund_name,
         isin: lumpsumForm.isin,
-        amc: lumpsumForm.amc,
         category: 'core',
-        sub_category: '',
         sip_amount: 0,
         sip_date: 1,
         start_date: null,
         current_nav: lumpsumForm.confirmed_nav || Number(lumpsumForm.nav) || null,
-        target_pct: 0,
         is_active: true,
       }
       if (userId) fundPayload.user_id = userId
@@ -666,7 +663,6 @@ ${activeFunds.map(f => `• ${f.fund_name} | ₹${f.sip_amount.toLocaleString('e
       sip_date:     Number(editForm.sip_date   ?? selFund.sip_date),
       is_active:    editForm.is_active ?? selFund.is_active,
       category:     editForm.category  ?? selFund.category,
-      sub_category: editForm.sub_category ?? selFund.sub_category,
       current_nav:  Number(editForm.current_nav ?? selFund.current_nav) || null,
     }).eq('id', selFund.id)
     if (error) { showToast('Error: ' + error.message, false); return }
@@ -880,19 +876,13 @@ ${activeFunds.map(f => `• ${f.fund_name} | ₹${f.sip_amount.toLocaleString('e
                     </div>
                   </div>
 
-                  <div className="mf-grid-2" style={{ marginBottom: 0 }}>
-                    <div>
-                      <label style={LBL}>Category</label>
-                      <select value={sipForm.category} onChange={e => setSipForm(f => ({ ...f, category: e.target.value as any }))} style={INP}>
-                        <option value="core">Core</option>
-                        <option value="growth">Growth</option>
-                        <option value="satellite">Satellite</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label style={LBL}>Sub-category</label>
-                      <input value={sipForm.sub_category} onChange={e => setSipForm(f => ({ ...f, sub_category: e.target.value }))} placeholder="Flexi Cap" style={INP} />
-                    </div>
+                  <div>
+                    <label style={LBL}>Category</label>
+                    <select value={sipForm.category} onChange={e => setSipForm(f => ({ ...f, category: e.target.value as any }))} style={INP}>
+                      <option value="core">Core</option>
+                      <option value="growth">Growth</option>
+                      <option value="satellite">Satellite</option>
+                    </select>
                   </div>
 
                   <div>
@@ -1057,10 +1047,6 @@ ${activeFunds.map(f => `• ${f.fund_name} | ₹${f.sip_amount.toLocaleString('e
                       <label style={LBL}>Latest NAV (₹)</label>
                       <input type="number" value={editForm.current_nav ?? selFund.current_nav} onChange={e => setEditForm(f => ({ ...f, current_nav: Number(e.target.value) }))} style={INP} />
                     </div>
-                  </div>
-                  <div>
-                    <label style={LBL}>Sub-category</label>
-                    <input value={editForm.sub_category ?? selFund.sub_category ?? ''} onChange={e => setEditForm(f => ({ ...f, sub_category: e.target.value }))} placeholder="Flexi Cap" style={INP} />
                   </div>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: 'pointer', color: C.text2 }}>
                     <input type="checkbox" checked={editForm.is_active ?? selFund.is_active} onChange={e => setEditForm(f => ({ ...f, is_active: e.target.checked }))} />

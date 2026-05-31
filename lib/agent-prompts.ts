@@ -1,20 +1,14 @@
 // lib/agent-prompts.ts
 // ─── Full Net Worth AI Prompt Engine ────────────────────────────────────────
-// Builds dense, personalized, token-efficient prompts for every agent type.
 
 export interface NetWorthContext {
-  // User identity
   user: {
     name: string
     role: string
-    since?: string // account created date
+    since?: string
   }
-
-  // Real-time financials
   netWorth: number
   totalAssets: number
-
-  // Asset breakdown
   liquidity: {
     total: number
     mfCorpus: number
@@ -22,28 +16,22 @@ export interface NetWorthContext {
     manualGain: number
     breakdown: Array<{ name: string; cat: string; value: number; invested: number }>
   }
-
   property: {
     total: number
     purchaseTotal: number
     appreciation: number
     breakdown: Array<{ name: string; cat: string; current: number; purchase: number; year?: number }>
   }
-
   cash: {
     total: number
     breakdown: Array<{ name: string; cat: string; balance: number }>
   }
-
-  // Liabilities
   liabilities: {
     total: number
     monthlyEMI: number
     avgRate: number
     breakdown: Array<{ name: string; cat: string; outstanding: number; emi: number; rate: number; endDate?: string }>
   }
-
-  // MF Portfolio
   mf: {
     corpus: number
     invested: number
@@ -63,8 +51,6 @@ export interface NetWorthContext {
       gainPct: number
     }>
   }
-
-  // Goals
   goals: Array<{
     name: string
     target: number
@@ -72,34 +58,31 @@ export interface NetWorthContext {
     progress: number
     targetDate?: string
   }>
-
-  // Projections (pre-computed)
   projections: {
     mf3mBase: number
     mf1yBase: number
     nw1yBase: number
   }
-
-  // Historical context
   nwHistory?: Array<{ month: string; nw: number }>
   recentAlerts?: string[]
 }
 
+// ─── Indian currency formatter ────────────────────────────────────────────────
+function fmtL(n: number): string {
+  const a = Math.abs(n)
+  if (a >= 10_000_000) return `₹${(n / 10_000_000).toFixed(2)}Cr`
+  if (a >= 100_000)    return `₹${(n / 100_000).toFixed(1)}L`
+  if (a >= 1_000)      return `₹${Math.round(n / 1_000)}K`
+  return `₹${Math.round(n)}`
+}
+
 // ─── Token-efficient context serializer ──────────────────────────────────────
 export function buildContext(ctx: NetWorthContext): string {
-  const fmtL = (n: number) => {
-    const a = Math.abs(n)
-    if (a >= 10000000) return `₹${(n / 10000000).toFixed(2)}Cr`
-    if (a >= 100000)   return `₹${(n / 100000).toFixed(1)}L`
-    return `₹${Math.round(n / 1000)}K`
-  }
-
   const date = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
   const debtRatio = ctx.totalAssets > 0
     ? ((ctx.liabilities.total / ctx.totalAssets) * 100).toFixed(1)
     : '0'
 
-  // NW trend (last 3 months delta)
   const nwTrend = (() => {
     if (!ctx.nwHistory || ctx.nwHistory.length < 2) return ''
     const last  = ctx.nwHistory[ctx.nwHistory.length - 1]?.nw ?? 0
@@ -108,34 +91,28 @@ export function buildContext(ctx: NetWorthContext): string {
     return ` | NW 3M: ${delta >= 0 ? '+' : ''}${fmtL(delta)}`
   })()
 
-  // Goals summary
   const goalsLine = ctx.goals.length > 0
     ? ctx.goals.map(g => `${g.name}(${g.progress.toFixed(0)}%→${fmtL(g.target)})`).join(', ')
     : 'none'
 
-  // MF funds — top 5 by value
   const topFunds = [...ctx.mf.funds]
     .sort((a, b) => b.current - a.current)
     .slice(0, 7)
     .map(f => `  • ${f.name} | ${f.category} | SIP:${fmtL(f.sip)}/mo | ${fmtL(f.invested)}→${fmtL(f.current)} (${f.gainPct >= 0 ? '+' : ''}${f.gainPct.toFixed(1)}%)`)
     .join('\n')
 
-  // Liability breakdown
   const liabLines = ctx.liabilities.breakdown
     .map(l => `  • ${l.name}(${l.cat}): ${fmtL(l.outstanding)} @ ${l.rate}% | EMI:${fmtL(l.emi)}/mo${l.endDate ? ` ends:${l.endDate}` : ''}`)
     .join('\n')
 
-  // Property breakdown
   const propLines = ctx.property.breakdown
     .map(p => `  • ${p.name}: ${fmtL(p.current)} (bought:${fmtL(p.purchase)}${p.year ? ` in ${p.year}` : ''})`)
     .join('\n')
 
-  // Liquidity (non-MF)
   const liqLines = ctx.liquidity.breakdown
     .map(l => `  • ${l.name}(${l.cat}): ${fmtL(l.value)} invested:${fmtL(l.invested)}`)
     .join('\n')
 
-  // Cash
   const cashLines = ctx.cash.breakdown
     .map(c => `  • ${c.name}(${c.cat}): ${fmtL(c.balance)}`)
     .join('\n')
@@ -178,10 +155,11 @@ MF 3M: ${fmtL(ctx.projections.mf3mBase)} | MF 1Y: ${fmtL(ctx.projections.mf1yBas
 ${ctx.recentAlerts?.length ? `\n━━ RECENT ALERTS ━━\n${ctx.recentAlerts.slice(0, 3).join('\n')}` : ''}`
 }
 
-// ─── System prompt ────────────────────────────────────────────────────────────
-export const SYSTEM_PROMPT = `You are Worth IQ — an elite Indian personal finance strategist with CFA + CA-level expertise.
+// ─── System prompt (now a function — FIX: was using un-resolved {USER_NAME}) ──
+export function buildSystemPrompt(userName: string): string {
+  return `You are Worth IQ — an elite Indian personal finance strategist with CFA + CA-level expertise.
 
-PERSONA: You know ${`{USER_NAME}`}'s complete financial picture. Speak to them by name occasionally. Be direct, high-signal, institutional quality.
+PERSONA: You know ${userName}'s complete financial picture. Speak to them by first name occasionally. Be direct, high-signal, institutional quality.
 
 RULES:
 - Use exact ₹ amounts and fund names from the context. Never invent numbers.
@@ -192,61 +170,78 @@ RULES:
 - No generic advice. Every insight must be specific to the numbers provided.
 - Indian tax context: LTCG 12.5% (equity >1yr), STCG 20%, debt indexation removed.
 - Maximize insight per token. Omit pleasantries.`
+}
 
-// ─── Prompt templates ─────────────────────────────────────────────────────────
+// Keep backward-compat export for any caller that imports the old constant
+export const SYSTEM_PROMPT = buildSystemPrompt('Investor')
 
+// ─── Agent types ──────────────────────────────────────────────────────────────
 export type AgentType =
-  | 'weekly_nw'        // Full net worth weekly review
-  | 'mf_review'        // MF-specific deep dive
-  | 'debt_optimizer'   // Liability strategy
-  | 'goal_tracker'     // Goals progress & gap analysis
-  | 'tax_optimizer'    // Tax efficiency
-  | 'rebalance'        // Portfolio rebalancing
-  | 'alert_scan'       // Risk & opportunity scan
-  | 'cash_flow'        // Monthly cash flow & liquidity
-  | 'custom'           // Free-form
+  | 'weekly_nw'
+  | 'mf_review'
+  | 'debt_optimizer'
+  | 'goal_tracker'
+  | 'tax_optimizer'
+  | 'rebalance'
+  | 'alert_scan'
+  | 'cash_flow'
+  | 'custom'
 
-export function buildPrompt(type: AgentType, ctx: string, custom?: string): {
-  prompt: string
-  maxTokens: number
-} {
+// ─── Prompt builder (now accepts full ctx object to resolve placeholders) ─────
+// FIX: old version passed only serialized string so {XIRR}, {EMI}, {SIP},
+//      {CASH} were never replaced — they appeared literally in the prompt.
+export function buildPrompt(
+  type: AgentType,
+  ctxString: string,
+  custom?: string,
+  ctxData?: NetWorthContext,   // ← NEW: pass raw data for placeholder injection
+): { prompt: string; maxTokens: number } {
+
+  // Resolved values from raw context (with safe fallbacks)
+  const xirr  = ctxData ? ctxData.mf.xirr.toFixed(1) + '%'                   : 'N/A'
+  const emi   = ctxData ? fmtL(ctxData.liabilities.monthlyEMI) + '/mo'        : 'N/A'
+  const sip   = ctxData ? `₹${ctxData.mf.monthlySIP.toLocaleString('en-IN')}/mo` : 'N/A'
+  const cash  = ctxData ? fmtL(ctxData.cash.total)                             : 'N/A'
+  const name  = ctxData?.user.name ?? 'the investor'
+
   switch (type) {
 
     case 'weekly_nw':
       return {
         maxTokens: 600,
-        prompt: `${ctx}
+        prompt: `${ctxString}
 
-Generate a WhatsApp-style weekly net worth update for this user.
+Generate a WhatsApp-style weekly net worth update for ${name}.
 
 Format exactly:
 📊 NW Score: X/100 (1-line rationale)
 📈 Best asset move this week
 📉 Biggest drag
 ⚠️ Top risk right now
-💡 #1 action this week (specific ₹ amount + fund/account)
-🎯 Goal on track / at risk
-💳 Debt health: rate arbitrage opportunity or EMI burden note
-💰 MF SIP status
+💡 #1 action this week (specific ₹ amount + fund/account name)
+🎯 Goal: on track / at risk — which one and by how much
+💳 Debt health: is loan rate (${ctxData ? ctxData.liabilities.avgRate.toFixed(1) : '?'}%) above or below MF XIRR (${xirr})?
+💰 SIP ${sip} — optimal or needs adjustment?
 
-Rules: exact names, exact ₹, max 200 words, no generic lines.`
+Rules: exact names, exact ₹, max 200 words, zero generic lines.`
       }
 
     case 'mf_review':
       return {
         maxTokens: 550,
-        prompt: `${ctx}
+        prompt: `${ctxString}
 
-Deep MF portfolio review. Output:
+Deep MF portfolio review for ${name}. Current XIRR: ${xirr}
 
+Output:
 🏆 Best fund (name + return %)
-⚠️ Weakest fund + reason to hold/exit
-📊 Category allocation gap (core/growth/satellite %)
-🔄 SIP efficiency: over/under-deployed funds
-💎 Lumpsum opportunity right now (fund + ₹)
-📉 XIRR vs benchmark comment
-🎯 Corpus needed to hit nearest unmet goal
-📅 Next SIP action (date-specific)
+⚠️ Weakest fund + specific reason to hold or exit
+📊 Category allocation gap — what % core/growth/satellite and what's ideal
+🔄 SIP ${sip} — which fund is over/under-deployed
+💎 Best lumpsum opportunity right now (exact fund + ₹ amount)
+📉 XIRR ${xirr} vs Nifty 50 / category benchmark — verdict
+🎯 Corpus gap to nearest unmet goal
+📅 Next SIP action this month (date-specific)
 
 Max 180 words. Fund names must match context exactly.`
       }
@@ -254,74 +249,83 @@ Max 180 words. Fund names must match context exactly.`
     case 'debt_optimizer':
       return {
         maxTokens: 450,
-        prompt: `${ctx}
+        prompt: `${ctxString}
 
-Debt optimization analysis. Output:
+Debt optimization for ${name}. Monthly EMI load: ${emi} | MF XIRR: ${xirr}
 
-🔴 Highest-cost loan (rate + outstanding)
-💡 Rate arbitrage: MF XIRR ${`{XIRR}`}% vs loan rates — prepay or invest?
-📅 Recommended prepayment order (highest rate first)
-💰 Optimal monthly allocation: EMI vs SIP vs prepayment
-🏦 Refinancing opportunity (if any rate > 9%)
-⚡ One action this month to reduce interest burden by most ₹
+Output:
+🔴 Highest-cost loan (exact name + rate + outstanding)
+💡 Rate arbitrage decision: MF XIRR ${xirr} vs avg loan ${ctxData ? ctxData.liabilities.avgRate.toFixed(1) : '?'}% — prepay or invest? Give ₹ recommendation
+📅 Recommended prepayment sequence (highest rate → lowest)
+💰 Optimal monthly split: EMI ${emi} + SIP ${sip} + prepayment — suggest reallocation
+🏦 Any loan > 9%? Flag refinancing opportunity
+⚡ Single action this month to cut total interest paid by maximum ₹
 
-Max 150 words. Use exact loan names and ₹ amounts.`
+Max 150 words. Use exact loan names and ₹ amounts from context.`
       }
 
     case 'goal_tracker':
       return {
         maxTokens: 500,
-        prompt: `${ctx}
+        prompt: `${ctxString}
 
-Goal gap analysis. For each goal:
-- Current progress %
-- Monthly SIP needed to close gap by target date
-- On track / at risk verdict
+Goal gap analysis for ${name}.
+
+For each goal from context above:
+- Progress % and ₹ current vs target
+- Monthly SIP needed to close gap by target date (assume 12% CAGR)
+- On track ✅ / At risk ⚠️ / Behind 🔴
 
 Then:
-🎯 Goal most at risk + rescue plan
-💡 Goal achievable earliest + current trajectory
-📊 Overall goal funding score X/10
-⚡ One reallocation to accelerate top goal
+🎯 Goal most at risk + specific rescue plan (₹ amount to add)
+💡 Goal achievable earliest — current trajectory date
+📊 Overall goal funding score: X/10
+⚡ One SIP reallocation to accelerate top priority goal
 
-Max 180 words. Use goal names from context.`
+Max 180 words. Use goal names exactly as in context.`
       }
 
     case 'tax_optimizer':
       return {
         maxTokens: 500,
-        prompt: `${ctx}
+        prompt: `${ctxString}
 
-Indian tax optimization for this portfolio. Current date context: FY ending Mar 2026.
+Indian tax optimization for ${name}. FY ending Mar 2026. Current XIRR: ${xirr}
 
 Output:
-📋 LTCG harvesting opportunity (which fund, est. ₹ gain, tax saving)
-💡 ELSS allocation vs current tax-saving investments
-⚠️ STCG exposure (funds held < 1 year)
-🏠 Property: if any sale planned, indexation note
-💳 Home loan interest deduction optimization
-🔄 Debt fund shift post-indexation removal
-⚡ Before Mar 31 action (specific ₹ + fund)
+📋 LTCG harvesting: which fund, estimated ₹ gain crystallizable, ₹ tax saved at 12.5%
+💡 ELSS: current allocation vs ₹1.5L 80C limit — gap
+⚠️ STCG exposure: any fund bought < 12 months? Flag and advise timing
+🏠 Property: if sale planned, capital gain estimate
+💳 Home loan: interest deduction being utilized? Max ₹2L sec 24(b)
+🔄 Debt funds: post-indexation-removal, shift to equity savings fund?
+⚡ Must-do before Mar 31 2027 (specific ₹ action + fund)
 
-Max 160 words. Reference actual fund names.`
+Max 160 words. Reference actual fund names from context.`
       }
 
     case 'rebalance':
       return {
         maxTokens: 550,
-        prompt: `${ctx}
+        prompt: `${ctxString}
 
-Portfolio rebalancing analysis. Output:
+Portfolio rebalancing for ${name}.
 
-📊 Current allocation vs ideal (equity/debt/property/cash %)
-🔴 Overweight: which asset, by how much ₹
-🟢 Underweight: which asset, opportunity
+📊 Current allocation:
+  - Equity MF: X% | Target: 60-70%
+  - Debt/Liquid: X% | Target: 10-15%
+  - Property: X% | Target: 20-25%
+  - Cash: X% | Target: 5-10%
+  (Calculate exact % from context numbers above)
+
+🔴 Most overweight asset — by exactly ₹X
+🟢 Most underweight asset — opportunity
 🔄 Specific rebalance trade:
-   → Reduce: [fund/asset] by ₹X
-   → Add:    [fund/asset] by ₹X
-   → Timeline: [when]
-💡 SIP redirection: any fund to pause/increase
-⚡ One-line net worth impact of doing this
+   → Reduce: [exact fund/asset] by ₹X
+   → Add:    [exact fund/asset] by ₹X
+   → Suggested timeline
+💡 SIP redirect: any fund to pause and redirect SIP to?
+⚡ Net worth impact of executing this rebalance
 
 Max 160 words. Exact fund names and ₹ amounts only.`
       }
@@ -329,54 +333,64 @@ Max 160 words. Exact fund names and ₹ amounts only.`
     case 'alert_scan':
       return {
         maxTokens: 500,
-        prompt: `${ctx}
+        prompt: `${ctxString}
 
-Scan for risks and opportunities across full net worth.
+Portfolio risk & opportunity scan for ${name}.
+Monthly EMI: ${emi} | Monthly SIP: ${sip} | XIRR: ${xirr} | Cash: ${cash}
 
-🔴 CRITICAL (act within 7 days):
-🟡 WATCH (act within 30 days):
-🟢 OPPORTUNITY (act within 90 days):
+Rate each finding as:
+🔴 CRITICAL — act within 7 days
+🟡 WATCH — act within 30 days
+🟢 OPPORTUNITY — act within 90 days
 
-Scan areas: EMI burden, concentration risk, underperforming funds,
-goal timeline breach, property illiquidity, cash drag,
-tax deadline, rate arbitrage, SIP amount vs income proxy.
+Scan these areas:
+- EMI burden as % of estimated income (proxy: EMI ÷ SIP × 3)
+- Concentration risk (any single fund > 25% of corpus?)
+- Underperforming funds (gainPct < 5% over context period)
+- Goal timeline breach risk
+- Property illiquidity risk
+- Cash drag (cash idle when XIRR ${xirr})
+- Rate arbitrage (any loan > XIRR?)
+- SIP amount relative to corpus growth rate
 
-Max 3 items per category. Each item: [issue] → [specific action] → [₹ impact].
+Max 3 items per category. Format: [issue] → [specific action] → [₹ impact]
 Max 160 words total.`
       }
 
     case 'cash_flow':
       return {
         maxTokens: 400,
-        prompt: `${ctx}
+        prompt: `${ctxString}
 
-Monthly cash flow & liquidity analysis.
+Monthly cash flow & liquidity for ${name}.
+Current: EMI=${emi} | SIP=${sip} | Cash=${cash}
 
-💸 Monthly outflow: EMI (${`{EMI}`}/mo) + SIP (${`{SIP}`}/mo) = total committed
-🏦 Liquid cash runway: ${`{CASH}`} ÷ monthly committed = X months
-⚠️ Liquidity ratio vs recommended 6-month emergency fund
-💡 Cash drag: idle cash that should be in liquid/arbitrage fund
-🔄 Optimization: move ₹X from [account] to [fund] for Y% better return
-📈 If corpus grows 13%: in 12M cash flow improves by ₹Z
+💸 Total monthly committed outflow = EMI + SIP (calculate from context)
+🏦 Emergency fund runway: ${cash} ÷ monthly outflow = X months
+   Recommended: 6 months. Status: adequate / inadequate?
+⚠️ Liquidity ratio: liquid assets (cash + liquid MF) vs total liabilities
+💡 Cash drag: is any idle cash in savings when it could earn ${xirr} in liquid/arbitrage fund? Flag ₹ amount
+🔄 Optimization: move ₹X from [specific account] to [specific fund] for Y% better return
+📈 At current SIP + corpus growth rate, monthly surplus in 12M: ₹Z
 
-Max 130 words.`
+Max 130 words. Use exact account and fund names from context.`
       }
 
     case 'custom':
       return {
         maxTokens: 700,
-        prompt: `${ctx}\n\n${custom || 'Provide a portfolio overview.'}`
+        prompt: `${ctxString}\n\n${custom || 'Provide a comprehensive portfolio overview with 3 specific actions for this month.'}`
       }
 
     default:
-      return { maxTokens: 400, prompt: ctx }
+      return { maxTokens: 400, prompt: ctxString }
   }
 }
 
-// ─── Token cost estimation ────────────────────────────────────────────────────
-// Rough: 1 token ≈ 4 chars. Input context ~800 tokens + prompt ~200 = ~1000 input.
-export const DAILY_TOKEN_LIMIT = 15000   // per user per day
-export const CONTEXT_TOKEN_EST = 1100    // estimated input tokens per call
+// ─── Token budget ─────────────────────────────────────────────────────────────
+export const DAILY_TOKEN_LIMIT   = 15_000  // per user per day
+export const CONTEXT_TOKEN_EST   = 1_100   // estimated input tokens per call
+
 export function estimateTotalTokens(maxOutputTokens: number): number {
   return CONTEXT_TOKEN_EST + maxOutputTokens
 }
